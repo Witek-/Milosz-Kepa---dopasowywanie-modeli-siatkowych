@@ -6,3 +6,5 @@ Program służący do dopasowywania trójwymiarowych modeli siatkowych do pojazd
 Ze względu na ograniczenie ilości plików, po sklonowaniu należy rozpakować xml.zip
 
 Folder "wideo" zawiera przykładowe wizualizacje działania programu.
+
+Funkcja main znajduje się w pliku opcv.cpp.
