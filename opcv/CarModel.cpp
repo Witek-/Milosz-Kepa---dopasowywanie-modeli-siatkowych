@@ -2,6 +2,8 @@
 #include "CarModel.hpp"
 //#include <opencv2/opencv.hpp>
 
+
+
 /** USTAWIENIE SPOWODUJE WLACZENIE TRYBU OBSERWACJI OPTYMALIZACJI
 */
 #define DEBUGGING 0
@@ -25,6 +27,7 @@ CarModel::CarModel(Rect roi_, Mat mask_, Mat MacierzKamery_, Mat WspolczynnikiZn
 	CarModel::setAngleStart(rand() % 360);
 	CarModel::calculateStartXY();
 	CarModel::setDefaultParams();
+	
 }
 
 void CarModel::setDefaultParams() 
@@ -87,26 +90,32 @@ void CarModel::calculateStartXY()
 	int wys = CarModel::roi.height;
 
 	//punkt poczatkowy modelu
-	vector<Point3f> p1{ { 0, 0, 0 } };
+	//vector<Point3f> p1{ { -17, -15, 0 } };
+	vector<Point3f> p1{ { -10, -20, 0 } };
 	vector<Point2f> p2, p2_last;
 
 	//Mat obraz(1080, 1920, CV_8UC3, Scalar(0,0,0));
 
 	//rzutowanie punktu na plaszczyzne obrazu
-	projectPoints(p1, CarModel::MacierzRotacji, CarModel::WektorTranslacji, CarModel::MacierzKamery, CarModel::WspolczynnikiZnieksztalcen, p2);
-	p2_last = p2;
+	//projectPoints(p1, CarModel::MacierzRotacji, CarModel::WektorTranslacji, CarModel::MacierzKamery, CarModel::WspolczynnikiZnieksztalcen, p2);
+	projectPoints2(p1, p2);
+    p2_last = p2;
 	//ustawienie modelu w okolicy ROI - punkt poczatkowy modelu
 	//przesuwanie punktow w 3d, i sprawdzanie ich wspolrzednych w 2d, czy zgadzaja sie z poczatkiem roi
 	while (int(p2[0].x) < xroi) {
-		p1[0].x += .1;
-		p1[0].y -= .5;
-		projectPoints(p1, CarModel::MacierzRotacji, CarModel::WektorTranslacji, CarModel::MacierzKamery, CarModel::WspolczynnikiZnieksztalcen, p2);
+		p1[0].y += .1;
+		p1[0].x -= .5;
+		//projectPoints(p1, CarModel::MacierzRotacji, CarModel::WektorTranslacji, CarModel::MacierzKamery, CarModel::WspolczynnikiZnieksztalcen, p2);
+		projectPoints2(p1, p2);
 		while (int(p2[0].y) > yroi + wys) {
-			p1[0].y += .1;
-			projectPoints(p1, CarModel::MacierzRotacji, CarModel::WektorTranslacji, CarModel::MacierzKamery, CarModel::WspolczynnikiZnieksztalcen, p2);
+			p1[0].x += .1;
+			//projectPoints(p1, CarModel::MacierzRotacji, CarModel::WektorTranslacji, CarModel::MacierzKamery, CarModel::WspolczynnikiZnieksztalcen, p2);
+			projectPoints2(p1, p2);
 		}
-		//line(obraz, p2[0], p2_last[0], Scalar(255, 0, 0));
-		//p2_last = p2;
+		//line(obraz, p2[0], p2_last[0], Scalar(0, 0, 255), 3);
+		p2_last = p2;
+		//imshow("xy",obraz);
+		//waitKey();
 	}
 	//imshow("xy",obraz);
 	//waitKey();
@@ -142,7 +151,8 @@ void CarModel::buildModel() {
 		p1_mod[i] = CarModel::rotateOverZ(p1_mod[i], c, angle);
 	}
 	CarModel::setModel3D(p1_mod);
-	projectPoints(p1_mod, CarModel::MacierzRotacji, CarModel::WektorTranslacji, CarModel::MacierzKamery, CarModel::WspolczynnikiZnieksztalcen, p2_mod);
+	//projectPoints(p1_mod, CarModel::MacierzRotacji, CarModel::WektorTranslacji, CarModel::MacierzKamery, CarModel::WspolczynnikiZnieksztalcen, p2_mod);
+	projectPoints2(p1_mod, p2_mod);
 	CarModel::setModel2D(p2_mod);
 }
 
@@ -159,8 +169,14 @@ void CarModel::buildModel2() {
 	for (int i = 0; i < p1_mod.size(); i++) {
 		p1_mod[i] = CarModel::rotateOverZ(p1_mod[i], c, angle);
 	}
+	//obrot osi z
+	//for (auto& point : p1_mod) {
+		//point.z *= (-1);
+	//}
+
 	CarModel::setModel3D(p1_mod);
-	projectPoints(p1_mod, CarModel::MacierzRotacji, CarModel::WektorTranslacji, CarModel::MacierzKamery, CarModel::WspolczynnikiZnieksztalcen, p2_mod);
+	//projectPoints(p1_mod, CarModel::MacierzRotacji, CarModel::WektorTranslacji, CarModel::MacierzKamery, CarModel::WspolczynnikiZnieksztalcen, p2_mod);
+	projectPoints2(p1_mod, p2_mod);
 	CarModel::setModel2D(p2_mod);
 }
 
@@ -223,8 +239,8 @@ int CarModel::calcCost()
 	//	polygon.push_back(Point(int(hull[i].x), int(hull[i].y)));
 	//}
 	//operacje na obrazach
-	int xmargin = int(1.1 * CarModel::roi.width);
-	int ymargin = int(1.1 * CarModel::roi.height);
+	int xmargin = int(0.5 * CarModel::roi.width);
+	int ymargin = int(0.5 * CarModel::roi.height);
 	Mat czarny_prostokat(CarModel::roi.height + 2 * ymargin, CarModel::roi.width + 2 * xmargin, CV_8U, Scalar(0));
 	Mat maska(CarModel::roi.height + 2 * ymargin, CarModel::roi.width + 2 * xmargin, CV_8U, Scalar(0));
 	Mat xo;
@@ -436,6 +452,66 @@ void CarModel::draw2(Mat& obraz2) {
 	line(obraz2, p2_mod[2], p2_mod[14], CV_RGB(255, 0, 255), 2);
 }
 
+void CarModel::drawOnMap(Mat& obraz2, Mat H) {
+	
+	
+	vector<Point3f> p2 = CarModel::getModel3D();
+	vector<Point3f> p2_mod;
+
+	for (auto& punkt : p2) {
+		float temp_x = punkt.x;
+		float temp_y = punkt.y;
+		punkt.x = temp_y;
+		punkt.y = temp_x;
+	}
+
+	for (auto punkt : p2) {
+		Point3d pm = Point3d(Mat(H * Mat(Point3d(punkt.x, punkt.y, 1))));
+		pm /= pm.z;
+		p2_mod.push_back(pm);
+	}
+
+	//podwozie
+	line(obraz2, Point(p2_mod[0].x, p2_mod[0].y), Point(p2_mod[1].x, p2_mod[1].y), CV_RGB(255, 0, 0), 2);
+	line(obraz2, Point(p2_mod[1].x, p2_mod[1].y), Point(p2_mod[2].x, p2_mod[2].y), CV_RGB(255, 0, 0), 2);
+	line(obraz2, Point(p2_mod[2].x, p2_mod[2].y), Point(p2_mod[3].x, p2_mod[3].y), CV_RGB(255, 0, 0), 2);
+	line(obraz2, Point(p2_mod[3].x, p2_mod[3].y), Point(p2_mod[0].x, p2_mod[0].y), CV_RGB(255, 0, 0), 2);
+
+	//gora_tyl
+	line(obraz2, Point(p2_mod[4].x, p2_mod[4].y), Point(p2_mod[5].x, p2_mod[5].y), CV_RGB(255, 255, 0), 2);
+	line(obraz2, Point(p2_mod[5].x, p2_mod[5].y), Point(p2_mod[6].x, p2_mod[6].y), CV_RGB(255, 255, 0), 2);
+	line(obraz2, Point(p2_mod[6].x, p2_mod[6].y), Point(p2_mod[7].x, p2_mod[7].y), CV_RGB(255, 255, 0), 2);
+	line(obraz2, Point(p2_mod[7].x, p2_mod[7].y), Point(p2_mod[4].x, p2_mod[4].y), CV_RGB(255, 255, 0), 2);
+
+	//gora
+	line(obraz2, Point(p2_mod[8].x, p2_mod[8].y), Point(p2_mod[9].x, p2_mod[9].y), CV_RGB(0, 255, 0), 2);
+	line(obraz2, Point(p2_mod[9].x, p2_mod[9].y), Point(p2_mod[10].x, p2_mod[10].y), CV_RGB(0, 255, 0), 2);
+	line(obraz2, Point(p2_mod[10].x, p2_mod[10].y), Point(p2_mod[11].x, p2_mod[11].y), CV_RGB(0, 255, 0), 2);
+	line(obraz2, Point(p2_mod[11].x, p2_mod[11].y), Point(p2_mod[8].x, p2_mod[8].y), CV_RGB(0, 255, 0), 2);
+
+	//gora_przod
+	line(obraz2, Point(p2_mod[12].x, p2_mod[12].y), Point(p2_mod[13].x, p2_mod[13].y), CV_RGB(255, 255, 0), 2);
+	line(obraz2, Point(p2_mod[13].x, p2_mod[13].y), Point(p2_mod[14].x, p2_mod[14].y), CV_RGB(255, 255, 0), 2);
+	line(obraz2, Point(p2_mod[14].x, p2_mod[14].y), Point(p2_mod[15].x, p2_mod[15].y), CV_RGB(255, 255, 0), 2);
+	line(obraz2, Point(p2_mod[15].x, p2_mod[15].y), Point(p2_mod[12].x, p2_mod[12].y), CV_RGB(255, 255, 0), 2);
+
+	//tyl
+	line(obraz2, Point(p2_mod[0].x, p2_mod[0].y), Point(p2_mod[4].x, p2_mod[4].y), CV_RGB(255, 0, 255), 2);
+	line(obraz2, Point(p2_mod[3].x, p2_mod[3].y), Point(p2_mod[7].x, p2_mod[7].y), CV_RGB(255, 0, 255), 2);
+
+	//skos_tyl
+	line(obraz2, Point(p2_mod[5].x, p2_mod[5].y), Point(p2_mod[8].x, p2_mod[8].y), CV_RGB(0, 255, 0), 2);
+	line(obraz2, Point(p2_mod[6].x, p2_mod[6].y), Point(p2_mod[11].x, p2_mod[11].y), CV_RGB(0, 255, 0), 2);
+
+	//skos_przod
+	line(obraz2, Point(p2_mod[9].x, p2_mod[9].y), Point(p2_mod[12].x, p2_mod[12].y), CV_RGB(0, 255, 0), 2);
+	line(obraz2, Point(p2_mod[10].x, p2_mod[10].y), Point(p2_mod[15].x, p2_mod[15].y), CV_RGB(0, 255, 0), 2);
+
+	//przod
+	line(obraz2, Point(p2_mod[1].x, p2_mod[1].y), Point(p2_mod[13].x, p2_mod[13].y), CV_RGB(255, 0, 255), 2);
+	line(obraz2, Point(p2_mod[2].x, p2_mod[2].y), Point(p2_mod[14].x, p2_mod[14].y), CV_RGB(255, 0, 255), 2);
+}
+
 int CarModel::tryReversed(int angle_)
 {
 	int cost_old = CarModel::getOptimalCost();
@@ -589,3 +665,11 @@ void CarModel::optimizeReduced(CarModel optimal, int last_angle)
 	CarModel::setOptimalCost(cost);
 	CarModel::buildModel2();
 }
+
+/////////////////////////////
+
+
+
+
+
+

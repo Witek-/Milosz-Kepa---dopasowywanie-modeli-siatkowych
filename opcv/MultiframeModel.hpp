@@ -15,8 +15,7 @@ private:
 	void calc5BestParams(CarModel, CarModel, CarModel, CarModel, CarModel);
 	vector<int> findCentralFrames();
 	vector<int> find5CentralFrames();
-	int findMinFrame();
-	int findMaxFrame();
+
 	double calcDistanceFromCenter(Point);
 	KalmanFilter initFilter(int);
 
@@ -36,6 +35,8 @@ public:
 	int getStatus() { return this->status; }
 	int getSize() { return this->models.size(); }
 
+	int findMinFrame();
+	int findMaxFrame();
 	//CarModel getModelByFrame(int frame);
 	//int getModelIndexByFrame(int frame);
 };

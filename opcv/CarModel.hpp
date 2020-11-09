@@ -2,6 +2,8 @@
 
 #include <opencv2/opencv.hpp>
 #include <omp.h>
+#include "kamera_szwedzka.hpp"
+
 
 #define ITERATIONS 3
 #define ANGLE_STEP 5
@@ -16,7 +18,7 @@
 #define D_START 4.0
 #define D_STEP 0.2
 #define D_NO_STEPS 12
-#define W_START 1.2
+#define W_START -2.2
 #define W_STEP 0.1
 #define W_NO_STEPS 11
 #define A_START 0.5
@@ -121,6 +123,7 @@ public:
 	vector<Point2f> returnModel2D();
 	void draw(Mat& obraz2);
 	void draw2(Mat& obraz2);
+	void drawOnMap(Mat& obraz2, Mat H);
 	void optimize(bool verbose=0);
 	int get2DArea();
 	void drawMask(Mat& obraz, Scalar c);
@@ -128,4 +131,5 @@ public:
 	void buildModel2();
 	int getMaskArea();
 };
+
 

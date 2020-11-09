@@ -170,6 +170,7 @@
     <ClInclude Include="CarModel.hpp" />
     <ClInclude Include="Hungarian.h" />
     <ClInclude Include="KalmanTracker.h" />
+    <ClInclude Include="kamera_szwedzka.hpp" />
     <ClInclude Include="MultiframeModel.hpp" />
     <ClInclude Include="pch.h" />
   </ItemGroup>
@@ -179,6 +180,9 @@
     </ClCompile>
     <ClCompile Include="Hungarian.cpp" />
     <ClCompile Include="KalmanTracker.cpp" />
+    <ClCompile Include="kamera_szwedzka.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">false</ExcludedFromBuild>
+    </ClCompile>
     <ClCompile Include="MultiframeModel.cpp" />
     <ClCompile Include="opcv.cpp">
       <AdditionalIncludeDirectories Condition="'$(Configuration)|$(Platform)'=='Release|x64'">C:\opencv\build\include</AdditionalIncludeDirectories>
